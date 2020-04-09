@@ -1,0 +1,271 @@
+<html>
+    <head>
+        <style>
+
+            @keyframes makeHappy {
+
+                from {
+
+                }
+
+                to {
+                    transform: scale(2);
+                }
+            }
+
+            #game-container {
+                width: 40%;
+                height: 90vh;
+                margin: 5vh auto;
+                border: 2px dashed black;
+                position: relative;
+            }
+
+            .bell-peper{
+                visibility: hidden;
+                width: 30px;
+                height: 37px;
+                background-image: url("./images/bell-peper.png");
+                background-size: contain;
+                
+                position: absolute;
+                transition: all 100ms ease-in;
+                top: 1%;
+            }
+
+            .cake{
+                visibility: hidden;
+                width: 50px;
+                height:50px;
+                background-image: url("./images/cake.png");
+                background-size:cover;
+                
+                position: absolute;
+                transition: all 100ms ease-in;
+                top: 1%;
+            }
+
+            #ceco { 
+                position: absolute;
+                
+                background-image: url("./images/ceco-20x20.png");
+                background-size:contain;
+                width: 100px;
+                height: 100px;
+
+                bottom: 0;
+                left: 40%;
+                
+                transition: all 100ms ease-in;
+            }
+
+            .game-over {
+                visibility: hidden;
+            }
+
+            #ceco.killed + .game-over {
+                visibility:visible;
+                width: 80%;
+                color: rgb(250, 18, 18);
+                margin: 10% auto;
+                border: rgb(207, 26, 26) solid 5px;
+                text-align: center;
+               
+            }
+            
+            .killed {
+                transform: scale(0);
+                transition: all 5s ease-out;
+            }
+
+        </style>
+    </head>
+    <body>
+        <div id="game-container">
+            <div id="ceco" tabindex="-1"></div>
+            <div class="game-over">
+                <h1>прощай</h1>
+                <img src="./images/game-over.png" width="250px" >
+            </div>
+            
+        </div>
+        <script>
+
+            function BellPeper(ceco){
+                this.ceco = ceco;  
+                this.element;
+
+                let rand = Math.floor(Math.random() * 10);
+                console.log(rand);
+
+                this.cake = (rand === 9) ? true : false;
+
+                this.container = document.getElementById("game-container");
+                this.positionX = Math.floor(Math.random() * 90);
+                this.positionY = 1;
+                this.step =10;
+                this.timer;
+
+                this.init();
+            }
+
+            BellPeper.prototype = {
+                
+                init: function(){
+
+                    let className = ''
+
+                    if(this.cake){
+                        className = 'cake';
+                    } else {
+                        className = 'bell-peper';
+                    }
+
+                    this.element = document.createElement("div");
+                    this.element.classList.add(className);
+                    this.container.appendChild(this.element);
+
+                    this.element.addEventListener("newPosition", function(e){
+                        if(!this.ceco.alive){
+                            this.destroy();
+                        } else {
+                            this.move();
+                        }
+                        
+                    }.bind(this))
+
+                    this.timer = setInterval(function(){
+                        this.element.dispatchEvent(new CustomEvent("newPosition", {}))
+                    }.bind(this),200)
+
+
+                },
+
+                move: function(){
+                    let newPosition =  this.positionY + this.step
+
+                    if(newPosition > 80 && this.positionX > this.ceco.cecoPosition && this.positionX < this.ceco.cecoPosition + 20){
+                        this.ceco.hit(this.cake);
+                    };
+                    
+                    if(newPosition < 100){
+                        this.positionY = newPosition;
+                        console.log(newPosition,this.positionX, this.ceco.cecoPosition);
+                        this.render();
+                    } else {
+                        this.destroy(true);
+                    }
+            
+                   
+                },
+
+                destroy: function(n){
+
+                    clearInterval(this.timer);
+                    this.element.remove();
+
+                    if(n){
+                        new BellPeper(this.ceco);
+                    }
+                    
+                },
+
+                render: function(){
+                    this.element.style.visibility = 'visible';
+                    this.element.style.left = this.positionX + '%';
+                    this.element.style.top = this.positionY + '%';
+                    
+                }
+            }
+            
+            function Ceco(id){
+                
+                this.borders = {
+                    min:1,
+                    max:84
+                };
+
+                this.lives = 2;
+                this.alive = true;
+
+                this.step = 5;
+                this.newPeperCount = 0;
+
+                this.cecoPosition = 40;
+                this.cecoElement = document.getElementById(id);
+
+
+            }
+
+            Ceco.prototype = {
+
+                init: function(){
+
+                    document.addEventListener("keydown", function(e){
+
+                        if(this.newPeperCount === 0){
+                            new BellPeper(this);
+                            this.newPeperCount = 5;
+                        }
+                        this.newPeperCount-=1;
+
+                        switch(e.key){
+                            
+                            case 'ArrowRight':
+                                this.move(+this.step);
+                            break;
+
+                            case 'ArrowLeft':
+                                this.move(-this.step);
+
+                        }
+                    }.bind(this));
+
+                },
+
+                move: function(step){
+
+                    let newPostion =  this.cecoPosition + step;
+
+                    if (newPostion <= this.borders.max && newPostion >= this.borders.min){
+                        this.cecoPosition = newPostion;
+                    }
+
+                    this.render();
+                },
+
+                hit: function(cake){
+                    
+                    if(cake){
+                        this.lives+=1;
+                        this.congratulate();
+                    } else {
+                        this.lives-=1;
+                    }
+                    
+                    if (this.lives === 0 ){
+                        this.kill();
+                    }
+                },
+
+                congratulate: function(){
+                    console.log("Hit:");
+                    this.cecoElement.style.animation = "makeHappy .5s ease-in";
+                },
+
+                kill: function(){
+                    this.alive = false;
+                    this.cecoElement.classList.add("killed"); 
+                },
+
+                render: function(){
+                    this.cecoElement.style.left = this.cecoPosition + '%';
+                }
+            }
+
+            let ceco = new Ceco("ceco");
+            ceco.init();
+
+        </script>
+    </body>
+</html>
